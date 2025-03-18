@@ -1,0 +1,6 @@
+@TunaBouzouki_HostAddress = http://localhost:5229
+
+GET {{TunaBouzouki_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
