@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.Json;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,14 +28,77 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseStaticFiles();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(
+        options => // UseSwaggerUI is called only in Development.
+        {
+            options.InjectStylesheet("/TunaBouzouki/styling.css");
+        });
 }
 
 app.UseHttpsRedirection();
 
+// ********* ARTIST ENDPOINTS **********
+
+// GET Artists
+app.MapGet("artist", (TunaBouzoukiDbContext db) =>
+{
+    try
+    {
+        var AS = db.Artists
+        .Include(a => a.Songs)
+        .ThenInclude(g => g.Genres)
+        .ToList();
+        return Results.Ok(AS);
+    }
+    catch
+    {
+        return Results.NotFound("No artists found");
+    }
+});
+
+// GET Artist by Id
+app.MapGet("artist/{id}", (TunaBouzoukiDbContext db, int id) =>
+{
+    try
+    {
+        return Results.Ok(db.Artists.FirstOrDefault(a => a.Id == id));
+    }
+    catch
+    {
+        return Results.NotFound("No artist found");
+    }
+});
+
+// ********* GENRE ENDPOINTS **********
+
+// GET Genres
+app.MapGet("genre", (TunaBouzoukiDbContext db) =>
+{
+    return Results.Ok(db.Genres.ToList());
+});
+
+// ********* SONG ENDPOINTS **********
+
+// GET Songs
+app.MapGet("song", (TunaBouzoukiDbContext db) =>
+{
+    try
+    {
+        var SG = db.Songs
+        .Include(s => s.Genres)
+        .ToList();
+        return Results.Ok(SG);
+    }
+    catch
+    {
+        return Results.NotFound("Not found");
+    }
+});
 
 app.Run();
