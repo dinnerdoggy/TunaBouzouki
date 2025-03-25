@@ -105,6 +105,23 @@ app.MapPut("artist/{id}", (int id, TunaBouzoukiDbContext db, Artist updatedArtis
     return Results.Ok(existingArtist);
 });
 
+// DELETE Artist (This will cascade delete all songs associated with this artist!)
+app.MapDelete("artist/{id}", (int id, TunaBouzoukiDbContext db) =>
+{
+    var artist = db.Artists.FirstOrDefault(a => a.Id == id);
+
+    if (artist == null)
+    {
+        return Results.NotFound();
+    }
+
+    db.Artists.Remove(artist);
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+
 
 
 // ********* GENRE ENDPOINTS **********
@@ -164,6 +181,35 @@ app.MapPut("genre/{id}", (int id, TunaBouzoukiDbContext db, Genre updatedGenre) 
     db.SaveChanges();
     return Results.Ok(existingGenre);
 });
+
+// DELETE Genre
+app.MapDelete("genre/{id}", (int id, TunaBouzoukiDbContext db) =>
+{
+    var genreToDelete = db.Genres
+        .Include(g => g.Songs) // Include Songs to clear join table links
+        .FirstOrDefault(g => g.Id == id);
+
+    if (genreToDelete == null)
+    {
+        return Results.NotFound($"Genre with ID {id} not found.");
+    }
+
+    // Remove links from the join table first
+    genreToDelete.Songs.Clear();
+
+    db.Genres.Remove(genreToDelete);
+    db.SaveChanges();
+
+    if (genreToDelete.Songs.Any())
+    {
+        return Results.BadRequest("Cannot delete genre that is still associated with songs.");
+    }
+    else
+    {
+        return Results.NoContent();
+    }
+});
+
 
 
 // ********* SONG ENDPOINTS **********
@@ -245,6 +291,27 @@ app.MapPut("song/{id}", (int id, TunaBouzoukiDbContext db, Song updatedSong) =>
 
     db.SaveChanges();
     return Results.Ok(existingSong);
+});
+
+// DELETE Song
+app.MapDelete("song/{id}", (int id, TunaBouzoukiDbContext db) =>
+{
+    var songToDelete = db.Songs
+        .Include(s => s.Genres) // Include Genres to handle join table cleanup
+        .FirstOrDefault(s => s.Id == id);
+
+    if (songToDelete == null)
+    {
+        return Results.NotFound($"Song with ID {id} not found.");
+    }
+
+    // Clear genre links to avoid orphaned join records
+    songToDelete.Genres.Clear();
+
+    db.Songs.Remove(songToDelete);
+    db.SaveChanges();
+
+    return Results.NoContent();
 });
 
 
