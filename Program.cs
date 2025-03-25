@@ -80,7 +80,33 @@ app.MapGet("artist/{id}", (TunaBouzoukiDbContext db, int id) =>
 // GET Genres
 app.MapGet("genre", (TunaBouzoukiDbContext db) =>
 {
-    return Results.Ok(db.Genres.ToList());
+    try
+    {
+        var GS = db.Genres
+        .Include(s => s.Songs)
+        .ToList();
+        return Results.Ok(GS);
+    }
+    catch
+    {
+        return Results.NotFound("Check your work");
+    }
+});
+
+// GET Genre by Id
+app.MapGet("genre/{id}", (TunaBouzoukiDbContext db, int id) =>
+{
+    try
+    {
+        var GS = db.Genres
+        .Include(s => s.Songs)
+        .FirstOrDefault(g => g.Id == id);
+        return Results.Ok(GS);
+    }
+    catch
+    {
+        return Results.NotFound("Couldn't find that shit");
+    }
 });
 
 // ********* SONG ENDPOINTS **********
@@ -98,6 +124,21 @@ app.MapGet("song", (TunaBouzoukiDbContext db) =>
     catch
     {
         return Results.NotFound("Not found");
+    }
+});
+
+app.MapGet("song/{id}", (TunaBouzoukiDbContext db, int id) =>
+{
+    try
+    {
+        var SG = db.Songs
+        .Include(g => g.Genres)
+        .FirstOrDefault(s => s.Id == id);
+        return Results.Ok(SG);
+    }
+    catch
+    {
+        return Results.NotFound("Fix your code");
     }
 });
 
