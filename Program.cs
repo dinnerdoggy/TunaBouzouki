@@ -79,6 +79,15 @@ app.MapGet("artist/{id}", (TunaBouzoukiDbContext db, int id) =>
     }
 });
 
+// CREATE Artist
+app.MapPost("artist", (TunaBouzoukiDbContext db, Artist artist) =>
+{
+    db.Artists.Add(artist);
+    db.SaveChanges();
+    return Results.Created($"artist/{artist.Id}", artist);
+});
+
+
 // ********* GENRE ENDPOINTS **********
 
 // GET Genres
@@ -112,6 +121,15 @@ app.MapGet("genre/{id}", (TunaBouzoukiDbContext db, int id) =>
         return Results.NotFound("Couldn't find that shit");
     }
 });
+
+// CREATE Genre
+app.MapPost("genre", (TunaBouzoukiDbContext db, Genre newGenre) =>
+{
+    db.Genres.Add(newGenre);
+    db.SaveChanges();
+    return Results.Created($"genre/{newGenre.Id}", newGenre);
+});
+
 
 // ********* SONG ENDPOINTS **********
 
