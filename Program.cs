@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
+using Tuna.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,13 +68,25 @@ app.MapGet("artist/{id}", (TunaBouzoukiDbContext db, int id) =>
 {
     try
     {
-        return Results.Ok(db.Artists.FirstOrDefault(a => a.Id == id));
+        var AS = db.Artists
+        .Include(a => a.Songs)
+        .FirstOrDefault(a => a.Id == id);
+        return Results.Ok(AS);
     }
     catch
     {
         return Results.NotFound("No artist found");
     }
 });
+
+// CREATE Artist
+app.MapPost("artist", (TunaBouzoukiDbContext db, Artist artist) =>
+{
+    db.Artists.Add(artist);
+    db.SaveChanges();
+    return Results.Created($"artist/{artist.Id}", artist);
+});
+
 
 // ********* GENRE ENDPOINTS **********
 
@@ -109,6 +122,15 @@ app.MapGet("genre/{id}", (TunaBouzoukiDbContext db, int id) =>
     }
 });
 
+// CREATE Genre
+app.MapPost("genre", (TunaBouzoukiDbContext db, Genre newGenre) =>
+{
+    db.Genres.Add(newGenre);
+    db.SaveChanges();
+    return Results.Created($"genre/{newGenre.Id}", newGenre);
+});
+
+
 // ********* SONG ENDPOINTS **********
 
 // GET Songs
@@ -117,6 +139,7 @@ app.MapGet("song", (TunaBouzoukiDbContext db) =>
     try
     {
         var SG = db.Songs
+        .Include(s => s.Artist)
         .Include(s => s.Genres)
         .ToList();
         return Results.Ok(SG);
@@ -127,11 +150,13 @@ app.MapGet("song", (TunaBouzoukiDbContext db) =>
     }
 });
 
+// GET Song by Id
 app.MapGet("song/{id}", (TunaBouzoukiDbContext db, int id) =>
 {
     try
     {
         var SG = db.Songs
+        .Include(s => s.Artist)
         .Include(g => g.Genres)
         .FirstOrDefault(s => s.Id == id);
         return Results.Ok(SG);
@@ -141,5 +166,21 @@ app.MapGet("song/{id}", (TunaBouzoukiDbContext db, int id) =>
         return Results.NotFound("Fix your code");
     }
 });
+
+// CREATE Song
+app.MapPost("song", (TunaBouzoukiDbContext db, Song song) =>
+{
+    // Replace any untracked genres with their actual tracked versions
+    var genreIds = song.Genres.Select(g => g.Id).ToList();
+    var existingGenres = db.Genres.Where(g => genreIds.Contains(g.Id)).ToList();
+
+    // Replace the Genres list with the actual tracked genre entities
+    song.Genres = existingGenres;
+
+    db.Songs.Add(song);
+    db.SaveChanges();
+    return Results.Created($"song/{song.Id}", song);
+});
+
 
 app.Run();
