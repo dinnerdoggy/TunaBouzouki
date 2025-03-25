@@ -165,6 +165,35 @@ app.MapPut("genre/{id}", (int id, TunaBouzoukiDbContext db, Genre updatedGenre) 
     return Results.Ok(existingGenre);
 });
 
+// DELETE Genre
+app.MapDelete("genre/{id}", (int id, TunaBouzoukiDbContext db) =>
+{
+    var genreToDelete = db.Genres
+        .Include(g => g.Songs) // Include Songs to clear join table links
+        .FirstOrDefault(g => g.Id == id);
+
+    if (genreToDelete == null)
+    {
+        return Results.NotFound($"Genre with ID {id} not found.");
+    }
+
+    // Remove links from the join table first
+    genreToDelete.Songs.Clear();
+
+    db.Genres.Remove(genreToDelete);
+    db.SaveChanges();
+
+    if (genreToDelete.Songs.Any())
+    {
+        return Results.BadRequest("Cannot delete genre that is still associated with songs.");
+    }
+    else
+    {
+        return Results.NoContent();
+    }
+});
+
+
 
 // ********* SONG ENDPOINTS **********
 
