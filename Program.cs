@@ -105,6 +105,23 @@ app.MapPut("artist/{id}", (int id, TunaBouzoukiDbContext db, Artist updatedArtis
     return Results.Ok(existingArtist);
 });
 
+// DELETE Artist (This will cascade delete all songs associated with this artist!)
+app.MapDelete("artist/{id}", (int id, TunaBouzoukiDbContext db) =>
+{
+    var artist = db.Artists.FirstOrDefault(a => a.Id == id);
+
+    if (artist == null)
+    {
+        return Results.NotFound();
+    }
+
+    db.Artists.Remove(artist);
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
+
 
 
 // ********* GENRE ENDPOINTS **********
