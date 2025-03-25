@@ -247,6 +247,27 @@ app.MapPut("song/{id}", (int id, TunaBouzoukiDbContext db, Song updatedSong) =>
     return Results.Ok(existingSong);
 });
 
+// DELETE Song
+app.MapDelete("song/{id}", (int id, TunaBouzoukiDbContext db) =>
+{
+    var songToDelete = db.Songs
+        .Include(s => s.Genres) // Include Genres to handle join table cleanup
+        .FirstOrDefault(s => s.Id == id);
+
+    if (songToDelete == null)
+    {
+        return Results.NotFound($"Song with ID {id} not found.");
+    }
+
+    // Clear genre links to avoid orphaned join records
+    songToDelete.Genres.Clear();
+
+    db.Songs.Remove(songToDelete);
+    db.SaveChanges();
+
+    return Results.NoContent();
+});
+
 
 
 app.Run();
