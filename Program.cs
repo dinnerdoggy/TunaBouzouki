@@ -87,6 +87,25 @@ app.MapPost("artist", (TunaBouzoukiDbContext db, Artist artist) =>
     return Results.Created($"artist/{artist.Id}", artist);
 });
 
+// UPDATE Artist
+app.MapPut("artist/{id}", (int id, TunaBouzoukiDbContext db, Artist updatedArtist) =>
+{
+    var existingArtist = db.Artists.FirstOrDefault(a => a.Id == id);
+
+    if (existingArtist == null)
+    {
+        return Results.NotFound($"Artist with ID {id} not found.");
+    }
+
+    existingArtist.Name = updatedArtist.Name;
+    existingArtist.Age = updatedArtist.Age;
+    existingArtist.Bio = updatedArtist.Bio;
+
+    db.SaveChanges();
+    return Results.Ok(existingArtist);
+});
+
+
 
 // ********* GENRE ENDPOINTS **********
 
@@ -130,6 +149,22 @@ app.MapPost("genre", (TunaBouzoukiDbContext db, Genre newGenre) =>
     return Results.Created($"genre/{newGenre.Id}", newGenre);
 });
 
+// UPDATE Genre
+app.MapPut("genre/{id}", (int id, TunaBouzoukiDbContext db, Genre updatedGenre) =>
+{
+    var existingGenre = db.Genres.FirstOrDefault(g => g.Id == id);
+
+    if (existingGenre == null)
+    {
+        return Results.NotFound($"Genre with ID {id} not found.");
+    }
+
+    existingGenre.Description = updatedGenre.Description;
+
+    db.SaveChanges();
+    return Results.Ok(existingGenre);
+});
+
 
 // ********* SONG ENDPOINTS **********
 
@@ -168,19 +203,50 @@ app.MapGet("song/{id}", (TunaBouzoukiDbContext db, int id) =>
 });
 
 // CREATE Song
-app.MapPost("song", (TunaBouzoukiDbContext db, Song song) =>
+app.MapPost("song", (TunaBouzoukiDbContext db, Song newSong) =>
 {
     // Replace any untracked genres with their actual tracked versions
-    var genreIds = song.Genres.Select(g => g.Id).ToList();
+    var genreIds = newSong.Genres.Select(g => g.Id).ToList();
     var existingGenres = db.Genres.Where(g => genreIds.Contains(g.Id)).ToList();
 
     // Replace the Genres list with the actual tracked genre entities
-    song.Genres = existingGenres;
+    newSong.Genres = existingGenres;
 
-    db.Songs.Add(song);
+    db.Songs.Add(newSong);
     db.SaveChanges();
-    return Results.Created($"song/{song.Id}", song);
+    return Results.Created($"song/{newSong.Id}", newSong);
 });
+
+// UPDATE Song
+app.MapPut("song/{id}", (int id, TunaBouzoukiDbContext db, Song updatedSong) =>
+{
+    var existingSong = db.Songs
+        .Include(s => s.Genres)
+        .FirstOrDefault(s => s.Id == id);
+
+    if (existingSong == null)
+    {
+        return Results.NotFound($"Song with ID {id} not found.");
+    }
+
+    // Update basic properties
+    existingSong.Title = updatedSong.Title;
+    existingSong.Album = updatedSong.Album;
+    existingSong.Length = updatedSong.Length;
+    existingSong.ArtistId = updatedSong.ArtistId;
+
+    // Handle many-to-many relationship updates (Genres)
+    if (updatedSong.Genres != null)
+    {
+        var genreIds = updatedSong.Genres.Select(g => g.Id).ToList();
+        var matchedGenres = db.Genres.Where(g => genreIds.Contains(g.Id)).ToList();
+        existingSong.Genres = matchedGenres;
+    }
+
+    db.SaveChanges();
+    return Results.Ok(existingSong);
+});
+
 
 
 app.Run();
